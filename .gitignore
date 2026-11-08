@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# 媒体与模型权重：不入库
+*.onnx
+*.wav
+*.flac
+*.mp3
+*.m4a
+
+# 本地产物
+*.log
+*.tmp
+.DS_Store
+Thumbs.db

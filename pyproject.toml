@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "music-evidence-engine"
+version = "0.1.1"
+description = "Host-independent local audio evidence engine"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["audio", "music", "analysis", "evidence"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: Microsoft :: Windows",
+]
+dependencies = [
+    "numpy",
+    "librosa",
+    "scipy",
+    "onnxruntime",
+    "soundfile>=0.12.1,<0.14",
+]
+
+[project.optional-dependencies]
+stems = ["demucs-onnx", "soundfile>=0.12.1,<0.14", "soxr"]
+asr = ["faster-whisper", "demucs-onnx", "soundfile>=0.12.1,<0.14", "soxr"]
+all = ["demucs-onnx", "soundfile>=0.12.1,<0.14", "soxr", "faster-whisper"]
+
+[project.scripts]
+music-evidence-engine = "music_evidence_engine.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["music_evidence_engine*"]
+
+[tool.setuptools.package-data]
+music_evidence_engine = ["THIRD_PARTY_NOTICES.md"]
