@@ -1,108 +1,85 @@
 # Music Evidence Engine
 
-一个本地运行、不依赖宿主的音频证据引擎（Python 包）。输入一首本地音频，输出速度、调性、响度、结构变化、音色与乐器方向的证据报告。
+[English](README.md) | [简体中文](README.zh-CN.md)
 
-音频不出本机。基础分析在本地完成；模型缺失时按降级规则处理，不会伪造证据。
+**A host-independent, CPU-friendly audio evidence engine.** Analyze local music files and obtain measurable features, time-localized observations, and structured outputs that an Agent or another application can inspect. It is a Python package with a CLI and API; **DSH is not required**.
 
-## 特性
+Audio is processed locally, with no audio upload. Installation and missing optional model weights may require network downloads.
 
-- 本地分析：BPM、调性、响度、能量走势、结构变化、标签、乐器方向、时间线
-- 文本与 JSON 两种输出；结论、测量与推断分栏
-- 可选组件：分轨（`demucs-onnx`）、歌词听写（`faster-whisper`）
-- 可作为 CLI 使用，也可作为 Python 包调用
-- 不依赖任何宿主运行时
+## What it provides
 
-## 安装
+- Tempo / beat estimates, key candidates, loudness, RMS and energy trends
+- Onset activity, spectral bands and acoustic change boundaries
+- Vocal activity, instrument candidates, music tags and time-based observations
+- Text and JSON reports; explicit distinction between measurements and inferred observations
+- Optional Demucs-based stem separation and Whisper-based lyric transcription
 
-```sh
+These are **pieces of evidence**, not ground-truth instrument identities, exact song form, or proof of musical meaning. Missing models may cause a reduced result rather than fabricated measurements.
+
+## Installation
+
+**Python 3.10+** is declared in package metadata; development and integration have primarily been validated on Windows. No dedicated GPU is required. CPU time and memory use depend on task and audio length.
+
+Use the source repository:
+
+```bash
+git clone https://github.com/ALittleLov/music-evidence-engine-public.git
+cd music-evidence-engine-public
 python -m pip install .
 ```
 
-基础分析依赖 `numpy / librosa / scipy / onnxruntime`。可选组件：
+Or obtain the built wheel from the [latest Engine release](https://github.com/ALittleLov/music-evidence-engine-public/releases/latest) and install that wheel with pip.
 
-```sh
-python -m pip install "music-evidence-engine[stems]"   # demucs-onnx + soundfile + soxr
-python -m pip install "music-evidence-engine[asr]"     # faster-whisper
+Optional Python dependencies, when needed:
+
+```bash
+python -m pip install ".[stems]"
+python -m pip install ".[asr]"
 ```
 
-要求 Python 3.10+；当前主要在 Windows 上验证。
+**Model files are separate from Python dependencies.** The wheel bundles MusicNN (approximately 3.2 MB); YAMNet, Beat This, Demucs and Whisper model data are managed separately. Refer to [`models.json`](src/music_evidence_engine/models.json) for sources, checksums and requirements. Installing the bare Python package does not mean all analyses and optional models are ready.
 
 ## CLI
 
-```sh
-music-evidence-engine "a.flac" --json          # 完整 JSON
-music-evidence-engine "a.flac" --json --brief  # 结论级 brief JSON
-music-evidence-engine "a.flac"                 # 默认文本
-music-evidence-engine "a.flac" --detail        # 详细文本
-music-evidence-engine "a.flac" --bands         # 分频诊断
-python -m music_evidence_engine "a.flac"       # 模块入口，效果相同
+```bash
+music-evidence-engine "track.flac"
+music-evidence-engine "track.flac" --json
+music-evidence-engine "track.flac" --json --brief
+music-evidence-engine "track.flac" --bands
+python -m music_evidence_engine "track.flac" --detail
 ```
 
-参数：`--blocks`、`--chord-block`、`--start`、`--end`、`--json`、`--brief`、
-`--detail`、`--stems`、`--asr`、`--preview-asr`、`--preview`、`--bands`、`--pitch`。
+Additional options include `--start`, `--end`, `--blocks`, `--stems`, `--asr`, `--preview` and `--pitch`. Use the appropriate model files and dependencies for the requested analysis.
 
 ## Python API
 
 ```python
-from music_evidence_engine import analyze
+from music_evidence_engine import analyze, EnginePaths, AnalysisError
 
-result = analyze("a.flac", format="json")
-print(result["summary"]["bpm"])
-
-brief = analyze("a.flac", brief=True)
-text = analyze("a.flac", format="text")["text"]
-```
-
-当前 API 是**进程内包装**：内部调用同一份分析脚本并解析其 stdout，不是原生
-in-process 实现。错误通过 `AnalysisError`（带 `exit_code` / `stdout`）传播。
-
-### 显式路径
-
-```python
-from music_evidence_engine import EnginePaths, analyze
+result = analyze("track.flac", format="json")
+print(result.keys())
 
 paths = EnginePaths(
-    resource_dir="models/yamnet",   # yamnet.onnx / yamnet_class_map.csv（musicnn 已内置）
-    data_dir="data",                # beat_this / whisper / hf_home
+    resource_dir="models/yamnet",
+    data_dir="data",
     cache_dir="cache/stems",
-    model_dir="data/models/stems",  # htdemucs 权重
+    model_dir="data/models/stems",
 )
-result = analyze("a.flac", paths=paths)
+result = analyze("track.flac", paths=paths, brief=True)
 ```
 
-`EnginePaths` 中为 `None` 的字段按以下优先级补全：
+`analyze()` is currently a **transitional in-process wrapper** around the same legacy analysis implementation used by the CLI; it captures and parses stdout. It is not a separate native API algorithm. Failures raise `AnalysisError`. Paths can be provided explicitly or via `MEE_*` environment variables.
 
-1. 显式字段
-2. `MEE_RESOURCE_DIR` / `MEE_DATA_DIR` / `MEE_CACHE_DIR` / `MEE_MODEL_DIR` / `MEE_HF_HOME` / `MEE_TMP_DIR`
-3. 旧 `DSH_AUDIO_DATA_DIR` / `DSH_AUDIO_CACHE_DIR` / `DSH_AUDIO_MODEL_DIR` / `HF_HOME`
-4. 旧布局探测
-5. `~/.music-evidence-engine`
+## Distribution and integration
 
-## 模型与数据
+- [Engine releases and versioned assets](https://github.com/ALittleLov/music-evidence-engine-public/releases/latest)
+- [dsh-soundcheck](https://github.com/ALittleLov/dsh-soundcheck) — the separate DSH Bridge, with its own installation and update UI
+- [Third-party notices](src/music_evidence_engine/THIRD_PARTY_NOTICES.md)
 
-wheel **只内置 MusicNN**（`builtin/musicnn.onnx`，约 3.2 MB），不包含 YAMNet、Beat This、Demucs、Whisper 权重，也不包含音频样本。基础分析（不请求 `--stems` / `--asr`）在本地完成：YAMNet 缺失时降级，Beat This 缺失时回退 librosa。
+The Engine does not provide its own long-running job service or DSH interface. Host applications manage task scheduling, user permissions and presentation.
 
-分轨/听写在本地找不到权重时，运行时可能尝试从 Hugging Face 下载（受
-`HF_HUB_OFFLINE` 与网络影响）；下载失败时返回 `available=false`。
-安装阶段（pip 拉依赖、获取模型/组件）需要网络；音频解码与基础分析本身在本地完成。
+## Limitations and license
 
-模型目录约定：
+Acoustic segmentation does not guarantee formal song sections; instrument and chord outputs are candidates. Some known limitations remain in long high-sample-rate files and optional ASR caching. Cross-platform behavior beyond the Windows-focused validation is not guaranteed.
 
-```
-<resource_dir>/yamnet.onnx + yamnet_class_map.csv（musicnn 内置在包内）
-<data_dir>/models/beat_this/beat-this-final0.onnx + frontend.json
-<data_dir>/models/stems/htdemucs_fp16weights.onnx / htdemucs_6s_fp16weights.onnx
-<data_dir>/whisper/<tiny|base|small>/...
-```
-
-## 已知限制
-
-- 96 kHz 长文件的结构切段属于既有行为，本版本不调整。
-- ASR 人声缓存的读取在某些情况下不生效。
-- 当前按 Windows 路径/进程语义验证；未做跨平台验证。
-- 不提供异步/后台任务；由调用方负责。
-- 输出 JSON 字段保持稳定，未新增契约。
-
-## 许可
-
-MIT，见 `LICENSE`。第三方依赖与模型的许可见 `src/music_evidence_engine/THIRD_PARTY_NOTICES.md`。
+MIT license. Third-party model and dependency licenses are listed in the notices above.
