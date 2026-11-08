@@ -143,6 +143,10 @@ class EnginePaths:
                 candidate = os.path.join(base, name)
                 if os.path.exists(candidate):
                     return candidate
+            # 随包的小型资源（如 musicnn.onnx），避免依赖外部下载
+            builtin = os.path.join(package_dir(), "builtin", name)
+            if os.path.exists(builtin):
+                return builtin
             return os.path.join(resource_dir or data_dir, name)
 
         return ResolvedPaths(

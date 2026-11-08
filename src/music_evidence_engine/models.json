@@ -1,0 +1,113 @@
+{
+  "schema": 1,
+  "engine_version": "0.1.2",
+  "note": "模型来源清单。除 musicnn.onnx 随 wheel 内置外，其余按需下载到本地缓存；音频分析本身不改变来源。",
+  "models": [
+    {
+      "name": "yamnet.onnx",
+      "kind": "resource",
+      "required": true,
+      "bundled": false,
+      "size": 16093603,
+      "sha256": "1510041dce24a2e9e84ec546807ac408ae496da6d1ed41bc3ccba649623f8e19",
+      "license": "Apache-2.0",
+      "source": "https://huggingface.co/zeropointnine/yamnet-onnx",
+      "download": "https://huggingface.co/zeropointnine/yamnet-onnx/resolve/main/yamnet.onnx",
+      "mirror": "https://hf-mirror.com/zeropointnine/yamnet-onnx/resolve/main/yamnet.onnx",
+      "note": "第三方 tf2onnx 转换；输入 waveform，输出 scores/embeddings/spectrogram，与原 521 类接口一致。"
+    },
+    {
+      "name": "musicnn.onnx",
+      "kind": "resource",
+      "required": false,
+      "bundled": true,
+      "size": 3192987,
+      "sha256": "a4d64c1dac195bdb118e789ddd38115c68028d26ad692448f5a8748e39490df6",
+      "license": "Apache-2.0 (third-party conversion); upstream MusicNN code ISC",
+      "source": "https://huggingface.co/oriyonay/musicnn-pytorch",
+      "note": "由本项目从 MTT_musicnn.pt 用 torch.onnx.export 转换（opset 13）。"
+    },
+    {
+      "name": "yamnet_class_map.csv",
+      "kind": "resource",
+      "required": true,
+      "bundled": false,
+      "size": 14096,
+      "sha256": "cdf24d193e196d9e95912a2667051ae203e92a2ba09449218ccb40ef787c6df2",
+      "license": "Apache-2.0",
+      "source": "随 YAMNet（Soundcheck Bridge 安装资产）"
+    },
+    {
+      "name": "beat-this-final0.onnx",
+      "kind": "data",
+      "required": true,
+      "bundled": false,
+      "size": 82098846,
+      "sha256": "e5e37b7d1802895e42559c5a1ced7619b1601d257a5c8e167c9d45de37c1b078",
+      "license": "MIT",
+      "source": "https://huggingface.co/aaatmy/beat-this-onnx",
+      "download": "https://huggingface.co/aaatmy/beat-this-onnx/resolve/main/beat-this-final0.onnx",
+      "mirror": "https://hf-mirror.com/aaatmy/beat-this-onnx/resolve/main/beat-this-final0.onnx"
+    },
+    {
+      "name": "frontend.json",
+      "kind": "data",
+      "required": true,
+      "bundled": false,
+      "size": 298186,
+      "sha256": "7b2ba71db92b79cb33f45feb21854161de329b86a7e6ea686c3fec51ce85eb9f",
+      "license": "MIT",
+      "source": "https://huggingface.co/aaatmy/beat-this-onnx",
+      "download": "https://huggingface.co/aaatmy/beat-this-onnx/resolve/main/frontend.json",
+      "mirror": "https://hf-mirror.com/aaatmy/beat-this-onnx/resolve/main/frontend.json"
+    },
+    {
+      "name": "htdemucs_fp16weights.onnx",
+      "kind": "optional",
+      "required": false,
+      "bundled": false,
+      "sha256": "d05c269d0178d2a72ad484b10b11dd370193fc923201c3b27a99f848745db70a",
+      "license": "MIT",
+      "source": "https://huggingface.co/StemSplitio/htdemucs-onnx",
+      "download": "https://huggingface.co/StemSplitio/htdemucs-onnx/resolve/main/htdemucs_fp16weights.onnx",
+      "mirror": "https://hf-mirror.com/StemSplitio/htdemucs-onnx/resolve/main/htdemucs_fp16weights.onnx"
+    },
+    {
+      "name": "htdemucs_6s_fp16weights.onnx",
+      "kind": "optional",
+      "required": false,
+      "bundled": false,
+      "sha256": "7ce55792e2231c93fbf92de95f5fd5b3a5e6c89f7db690dfd693e8f1dce56869",
+      "license": "MIT",
+      "source": "https://huggingface.co/StemSplitio/htdemucs-6s-onnx",
+      "download": "https://huggingface.co/StemSplitio/htdemucs-6s-onnx/resolve/main/htdemucs_6s_fp16weights.onnx",
+      "mirror": "https://hf-mirror.com/StemSplitio/htdemucs-6s-onnx/resolve/main/htdemucs_6s_fp16weights.onnx"
+    },
+    {
+      "name": "whisper",
+      "kind": "on-demand",
+      "required": false,
+      "bundled": false,
+      "license": "MIT",
+      "source": "https://huggingface.co/Systran/faster-whisper-{tiny,base,small}",
+      "note": "听写组件按需从上游下载，缓存到 <data>/whisper。"
+    }
+  ],
+  "engine_api": 1,
+  "requires": {
+    "runtime": [
+      "librosa",
+      "onnxruntime",
+      "soundfile",
+      "soxr"
+    ],
+    "optional": {
+      "stems": [
+        "demucs_onnx"
+      ],
+      "asr": [
+        "faster_whisper"
+      ]
+    }
+  }
+}

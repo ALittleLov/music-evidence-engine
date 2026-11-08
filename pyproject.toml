@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "music-evidence-engine"
-version = "0.1.1"
+version = "0.1.2"
 description = "Host-independent local audio evidence engine"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -39,4 +39,4 @@ where = ["src"]
 include = ["music_evidence_engine*"]
 
 [tool.setuptools.package-data]
-music_evidence_engine = ["THIRD_PARTY_NOTICES.md"]
+music_evidence_engine = ["THIRD_PARTY_NOTICES.md", "builtin/*", "models.json"]

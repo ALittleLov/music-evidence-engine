@@ -62,7 +62,7 @@ in-process 实现。错误通过 `AnalysisError`（带 `exit_code` / `stdout`）
 from music_evidence_engine import EnginePaths, analyze
 
 paths = EnginePaths(
-    resource_dir="models/yamnet",   # yamnet.onnx / musicnn.onnx / yamnet_class_map.csv
+    resource_dir="models/yamnet",   # yamnet.onnx / yamnet_class_map.csv（musicnn 已内置）
     data_dir="data",                # beat_this / whisper / hf_home
     cache_dir="cache/stems",
     model_dir="data/models/stems",  # htdemucs 权重
@@ -80,8 +80,7 @@ result = analyze("a.flac", paths=paths)
 
 ## 模型与数据
 
-wheel **不包含**模型权重，也不包含音频样本。基础分析（不请求 `--stems` / `--asr`）
-在本地完成：YAMNet/MusicNN 缺失时静默降级，Beat This 缺失时回退 librosa。
+wheel **只内置 MusicNN**（`builtin/musicnn.onnx`，约 3.2 MB），不包含 YAMNet、Beat This、Demucs、Whisper 权重，也不包含音频样本。基础分析（不请求 `--stems` / `--asr`）在本地完成：YAMNet 缺失时降级，Beat This 缺失时回退 librosa。
 
 分轨/听写在本地找不到权重时，运行时可能尝试从 Hugging Face 下载（受
 `HF_HUB_OFFLINE` 与网络影响）；下载失败时返回 `available=false`。
@@ -90,7 +89,7 @@ wheel **不包含**模型权重，也不包含音频样本。基础分析（不�
 模型目录约定：
 
 ```
-<resource_dir>/yamnet.onnx + musicnn.onnx + yamnet_class_map.csv
+<resource_dir>/yamnet.onnx + yamnet_class_map.csv（musicnn 内置在包内）
 <data_dir>/models/beat_this/beat-this-final0.onnx + frontend.json
 <data_dir>/models/stems/htdemucs_fp16weights.onnx / htdemucs_6s_fp16weights.onnx
 <data_dir>/whisper/<tiny|base|small>/...
