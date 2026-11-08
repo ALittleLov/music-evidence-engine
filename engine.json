@@ -1,8 +1,9 @@
 {
   "schema": 1,
-  "version": "0.1.1",
-  "wheel": "https://github.com/ALittleLov/music-evidence-engine-public/releases/download/v0.1.1/music_evidence_engine-0.1.1-py3-none-any.whl",
-  "sha256": "2598d06cd615ea8ac3afdf189667db8c7178d4a8b0b2506061d15fd1f8a322d8",
+  "version": "0.1.2",
+  "wheel": "https://github.com/ALittleLov/music-evidence-engine/releases/download/v0.1.2/music_evidence_engine-0.1.2-py3-none-any.whl",
+  "sha256": "b8678204853d4a5021fc55d3b3d15c596a5928d565a572481c32080f3efe163f",
   "min_bridge": "1.0.1",
-  "models": "https://raw.githubusercontent.com/ALittleLov/music-evidence-engine-public/main/src/music_evidence_engine/models.json"
+  "models": "https://raw.githubusercontent.com/ALittleLov/music-evidence-engine/main/src/music_evidence_engine/models.json",
+  "engine_api": 1
 }
