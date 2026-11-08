@@ -23,12 +23,12 @@
 从源码安装：
 
 ```bash
-git clone https://github.com/ALittleLov/music-evidence-engine-public.git
-cd music-evidence-engine-public
+git clone https://github.com/ALittleLov/music-evidence-engine.git
+cd music-evidence-engine
 python -m pip install .
 ```
 
-也可从 [最新 Engine Release](https://github.com/ALittleLov/music-evidence-engine-public/releases/latest) 下载 wheel，再用 pip 安装该文件。
+也可从 [最新 Engine Release](https://github.com/ALittleLov/music-evidence-engine/releases/latest) 下载 wheel，再用 pip 安装该文件。
 
 按需安装可选依赖：
 
@@ -72,7 +72,7 @@ result = analyze("track.flac", paths=paths, brief=True)
 
 ## 发行与接入
 
-- [Engine 最新发行与制品](https://github.com/ALittleLov/music-evidence-engine-public/releases/latest)
+- [Engine 最新发行与制品](https://github.com/ALittleLov/music-evidence-engine/releases/latest)
 - [dsh-soundcheck](https://github.com/ALittleLov/dsh-soundcheck)：独立维护的 DSH Bridge，负责插件安装、调用和界面
 - [第三方许可说明](src/music_evidence_engine/THIRD_PARTY_NOTICES.md)
 
