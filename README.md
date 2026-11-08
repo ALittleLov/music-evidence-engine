@@ -23,12 +23,12 @@ These are **pieces of evidence**, not ground-truth instrument identities, exact 
 Use the source repository:
 
 ```bash
-git clone https://github.com/ALittleLov/music-evidence-engine-public.git
-cd music-evidence-engine-public
+git clone https://github.com/ALittleLov/music-evidence-engine.git
+cd music-evidence-engine
 python -m pip install .
 ```
 
-Or obtain the built wheel from the [latest Engine release](https://github.com/ALittleLov/music-evidence-engine-public/releases/latest) and install that wheel with pip.
+Or obtain the built wheel from the [latest Engine release](https://github.com/ALittleLov/music-evidence-engine/releases/latest) and install that wheel with pip.
 
 Optional Python dependencies, when needed:
 
@@ -72,7 +72,7 @@ result = analyze("track.flac", paths=paths, brief=True)
 
 ## Distribution and integration
 
-- [Engine releases and versioned assets](https://github.com/ALittleLov/music-evidence-engine-public/releases/latest)
+- [Engine releases and versioned assets](https://github.com/ALittleLov/music-evidence-engine/releases/latest)
 - [dsh-soundcheck](https://github.com/ALittleLov/dsh-soundcheck) — the separate DSH Bridge, with its own installation and update UI
 - [Third-party notices](src/music_evidence_engine/THIRD_PARTY_NOTICES.md)
 
