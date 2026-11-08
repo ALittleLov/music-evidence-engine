@@ -7,7 +7,7 @@ import 本包不会加载 librosa / onnxruntime，也不会扫描音频或联网
 from .api import AnalysisError, analyze
 from .paths import EnginePaths, ResolvedPaths, resolve_paths
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 __all__ = [
     "analyze",
