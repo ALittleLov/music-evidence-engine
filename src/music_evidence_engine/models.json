@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "engine_version": "0.1.2",
+  "engine_version": "0.1.3",
   "note": "模型来源清单。除 musicnn.onnx 随 wheel 内置外，其余按需下载到本地缓存；音频分析本身不改变来源。",
   "models": [
     {

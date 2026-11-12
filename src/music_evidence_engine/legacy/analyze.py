@@ -2379,6 +2379,204 @@ def pitch_summary(y, sr, fmin=120.0, fmax=1200.0):
         return {"available": False, "reason": f"{type(e).__name__}: {e}"}
 
 
+def pitch_contour(y, sr, *, fmin=80.0, fmax=1200.0, frame_sec=0.5, want_series=False,
+                  source_kind="unknown", role="unknown"):
+    """时间化音高轮廓（实验性）。给「音高怎么走」，不是只给音域。
+
+    与 pitch_summary 的分工：
+      - pitch_summary 回答「这段声音的音域/有声占比/整体倾向」，够用就不该多给；
+      - 本函数回答「在哪一刻转弯」，因此必须保留时间轴。
+
+    输入约束（调用方负责）：只接受**单一目标声部**——独立音轨、已知的乐器轨，
+    或分离模型对明确目标类别的输出。直接把完整混音丢进来，pyin 会锁到最强的那条线
+    （通常是贝斯或伴奏），得到的是「某条线」而不是「旋律」。这一点无法在函数内验证，
+    只能靠 caveat 和调用方的 source_note 披露。
+
+    八度可疑标记的判据：相邻帧中位音高差接近 12 半音、且下一帧立刻回到原层。
+    真实旋律的八度跳进会保持在新层，不会单帧往返；pyin 的八度滑移是单帧往返。
+    """
+    try:
+        from scipy.signal import butter, sosfilt, find_peaks
+        sos = butter(4, 150, btype="highpass", fs=sr, output="sos")
+        yh = sosfilt(sos, y).astype(np.float32)
+        f0, voiced, vp = librosa.pyin(yh, fmin=fmin, fmax=fmax, sr=sr, frame_length=2048)
+        hop_sec = 512.0 / sr
+        keep = voiced.astype(bool) & np.isfinite(f0) & (f0 > 0)
+        if keep.sum() < 8:
+            return {"available": False, "reason": "没有稳定的基频"}
+
+        times = np.arange(len(f0)) * hop_sec
+        # 0.5 秒中值聚合：再密就是逐帧 dump，文本 Agent 读不动，也没必要。
+        grid = np.arange(0.0, len(f0) * hop_sec, frame_sec)
+        series, series_t, series_hz = [], [], []
+        for g in grid:
+            sel = keep & (times >= g) & (times < g + frame_sec)
+            if sel.any():
+                series_t.append(round(float(g), 2))
+                series_hz.append(float(np.median(f0[sel])))
+                series.append(float(np.median(69 + 12 * np.log2(f0[sel] / 440.0))))
+        if len(series) < 4:
+            return {"available": False, "reason": "有效帧太少，凑不出轮廓"}
+
+        arr = np.array(series, dtype=float)
+        med = float(np.median(arr))
+        rel = np.round(arr - med, 2)          # 相对窗口中位数的半音偏差
+
+        # 转折点：先 3 点滑动平滑，再取 prominence ≥2 半音的极值。
+        # 2 半音是听感上「拐了一下」的下限；小于它的锯齿当抖动，不报。
+        sm = np.convolve(arr, np.ones(3) / 3, mode="same")
+        pk, _ = find_peaks(sm, prominence=2.0, distance=2)
+        tr, _ = find_peaks(-sm, prominence=2.0, distance=2)
+        turns = sorted(
+            [("peak", round(float(series_t[p]), 2), round(float(rel[p]), 1)) for p in pk]
+            + [("trough", round(float(series_t[q]), 2), round(float(rel[q]), 1)) for q in tr],
+            key=lambda x: x[1],
+        )
+
+        # 八度可疑,拆成两类(语义不同,不合并):
+        #   roundtrip   = 单帧往返 12 半音(下一帧回到原层) —— pyin 一次滑移
+        #   out_of_window = 相对窗口中位数 |x| > 12 半音的点 —— 跨段滞留,可能是锁到次谐波
+        # 上一版把两类合进 octave_suspect_at,导致 P03 的标记帧(10.0/14.0/15.0)与
+        # 谷值帧(10.5/14.5)看起来错开半秒;其实不是错位,是两类混在一个字段里。
+        oct_roundtrip, oct_out = [], []
+        for i in range(1, len(rel) - 1):
+            d1 = rel[i] - rel[i - 1]
+            d2 = rel[i + 1] - rel[i]
+            if abs(abs(d1) - 12.0) <= 1.5 and abs(abs(d2) - 12.0) <= 1.5 and d1 * d2 < 0:
+                oct_roundtrip.append(round(float(series_t[i]), 2))
+        for t, v in zip(series_t, rel):
+            if abs(float(v)) > 12.0:
+                oct_out.append(round(float(t), 2))
+        oct_roundtrip.sort()
+        oct_out.sort()
+        oct_flags = sorted(set(oct_roundtrip) | set(oct_out))
+
+        # 有声断档：连续 ≥1 秒没有有效帧。只报「没测到音高」，不说这是音乐停顿——
+        # 没有独立 voicing 真值时，静音、清辅音、pyin 脱锁三者分不开。
+        have = np.array([g in series_t for g in grid], dtype=bool)
+        gaps, i = [], 0
+        while i < len(have):
+            if not have[i]:
+                j = i
+                while j < len(have) and not have[j]:
+                    j += 1
+                if (j - i) * frame_sec >= 1.0:
+                    # j 可能等于 len(grid)(断档一直到结尾),直接 grid[j] 会 IndexError。
+                    gaps.append([round(float(grid[i]), 1),
+                                 round(float(grid[j]) if j < len(grid) else round(len(f0) * hop_sec, 1), 1)])
+                i = j
+            else:
+                i += 1
+
+        total = float(rel[-1] - rel[0])
+        endpoint_direction = "up" if total > 1.5 else ("down" if total < -1.5 else "flat")
+        trend = {"up": "上行", "down": "下行", "flat": "基本持平"}[endpoint_direction]
+
+        # 来源声明是**调用方给的元数据**,不是 Engine 探测出的声源身份。
+        # mixture 上 pyin 只追到"最强的那条线",不是目标旋律(R1-Mix 实测方向会反),
+        # 所以把"能不能当目标旋律用"写进结构化字段,不靠读者去读文字说明。
+        _kind = source_kind if source_kind in ("isolated_track", "mixture", "unknown") else "unknown"
+        _role = role if role in ("melody", "vocal", "instrument", "bass",
+                                 "accompaniment", "unknown") else "unknown"
+        _usable = _kind == "isolated_track"
+        out = {
+            "available": True,
+            "status": "computed_unverified",
+            "source_declared": {
+                "kind": _kind,
+                "role": _role,
+                "caller_supplied": True,
+                "note": "调用方声明的来源与角色,Engine 没有验证过;role=unknown 不代表没有旋律。",
+            },
+            "mixture_risk": {
+                "level": "none" if _usable else ("high" if _kind == "mixture" else "unknown"),
+                "usable_as_target_melody": _usable,
+                "reason": (
+                    "调用方声明为独立音轨" if _usable else
+                    "调用方声明为完整混音:pyin 只追到最强的一条线,方向可能与目标旋律相反,"
+                    "不可据此判断目标旋律" if _kind == "mixture" else
+                    "调用方未声明来源:不能默认当独立音轨,以下结果只作诊断,不作旋律结论"
+                ),
+            },
+            "frame_sec": frame_sec,
+            "voiced_ratio": round(float(keep.mean()), 3),
+            "span": round(float(np.percentile(rel, 90) - np.percentile(rel, 10)), 1),
+            "span_note": "P90-P10 的稳健跨度,不是极差;所以它可能小于 turns 里峰谷之间的幅度。",
+            "net_change": round(total, 1),
+            "endpoint_direction": endpoint_direction,
+            "trend": trend,
+            "trend_note": "trend/endpoint_direction 只看首帧与末帧之差(阈值 ±1.5 半音),"
+                          "不表示全程单调;窗口边界落在低处还是高处会直接改变这个标签,"
+                          "判断走向要看 turns。",
+            "turns": turns,
+            "octave_roundtrip_at": oct_roundtrip,
+            "out_of_window_at": oct_out,
+            "octave_suspect_at": oct_flags,
+            "octave_suspect_note": "octave_suspect_at 是 roundtrip 与 out_of_window 的合并结果,"
+                                   "仅为兼容旧调用方保留;新代码请分别读两个细分字段。",
+            "octave_suspect_count": len(oct_flags),
+            "voiced_gaps": gaps,
+            "contour_note": "相对窗口中位数的半音偏差；正=偏高，负=偏低，0=该窗口中位。",
+        }
+        if want_series:
+            out["series"] = [[t, round(float(v), 2)] for t, v in zip(series_t, rel)]
+            # 绝对音高：与 series 同轴同聚合（0.5 秒中位 f0），series 的语义不变。
+            out["absolute_series"] = [
+                [t, round(hz, 1), round(float(69 + 12 * np.log2(hz / 440.0)), 2)]
+                for t, hz in zip(series_t, series_hz)
+            ]
+        return out
+    except Exception as e:  # noqa: BLE001
+        return {"available": False, "reason": f"{type(e).__name__}: {e}"}
+
+
+
+def emit_pitch_track(tc):
+    """打印时间化音高轮廓摘要（--pitch-track）。只报测到的，不命名乐器、不叫段落。"""
+    print()
+    if not tc or not tc.get("available"):
+        print(f"[音高轮廓] 未计算 —— {(tc or {}).get('reason', '未知')}")
+        print("       输入可能不是单一音轨；混音上跑 pyin 会锁到最强的那条线，那不是旋律。")
+        return
+    print(f"[音高轮廓] 帧 {tc['frame_sec']}s | 有声 {tc['voiced_ratio'] * 100:.0f}%"
+          f" | 跨度 {tc['span']} 半音 | 净变化 {tc['net_change']:+.1f} 半音 → {tc['trend']}")
+    _src = tc.get("source_declared") or {}
+    _risk = tc.get("mixture_risk") or {}
+    _k = {"isolated_track": "独立音轨", "mixture": "完整混音", "unknown": "未声明"}.get(_src.get("kind"), "?")
+    _r = {"melody": "旋律", "vocal": "人声", "instrument": "器乐", "bass": "低音",
+          "accompaniment": "伴奏", "unknown": "未声明"}.get(_src.get("role"), "?")
+    print(f"[音高轮廓] 来源 {_k} / 角色 {_r}（调用方声明，Engine 未验证）")
+    if _risk and not _risk.get("usable_as_target_melody"):
+        print(f"        ⚠ {_risk.get('reason')}")
+    turns = tc.get("turns") or []
+    if turns:
+        head = " / ".join(f"{t[1]:.1f}s {t[0]} {t[2]:+.1f}" for t in turns[:6])
+        tail = f" 等共 {len(turns)} 处" if len(turns) > 6 else ""
+        print(f"[音高轮廓] 主要转折: {head}{tail}")
+    _rt = tc.get("octave_roundtrip_at") or []
+    _ow = tc.get("out_of_window_at") or []
+    if _rt:
+        print(f"[音高轮廓] 八度往返 {len(_rt)} 处(单帧跳 12 半音又跳回): "
+              + ", ".join(f"{t:.1f}s" for t in _rt[:6]))
+    if _ow:
+        print(f"[音高轮廓] 出窗 {len(_ow)} 处(相对中位数超过 12 半音): "
+              + ", ".join(f"{t:.1f}s" for t in _ow[:6])
+              + " —— 跨段滞留多半是锁到次谐波,不能当旋律跳进")
+    if not _rt and not _ow:
+        print("[音高轮廓] 未发现八度可疑帧")
+    if len(_rt) + len(_ow) >= 3:
+        print("[音高轮廓] ⚠ 八度可疑偏多 —— 可能是输入含多条线,也可能是单一乐器的高次泛音"
+              "/双音让 pyin 跨八度族;无论哪种,这些点都不能当旋律跳进。"
+              "独立轨上出现同样要折扣着看(实测小提琴轨就有 6 处)。")
+    gaps = tc.get("voiced_gaps") or []
+    if gaps:
+        print(f"[音高轮廓] 无有效音高 {len(gaps)} 段: "
+              + ", ".join(f"{a:.1f}-{b:.1f}s" for a, b in gaps[:6])
+              + " —— 只表示没测到音高，不能当音乐停顿")
+    print(f"[音高轮廓] 注意: {(tc.get('source_declared') or {}).get('note', '')}")
+
+
+
 def emit_pitch(stems, y, sr):
     """输出音高轮廓。默认输出与 --detail 两条路径都要调它。"""
     print()
@@ -3653,6 +3851,18 @@ def main():
                     help="只输出分频段诊断(能量/打击密度/规律性 cv),不跑完整分析")
     ap.add_argument("--pitch", action="store_true",
                     help="音高轮廓(pyin):只给音域与有声占比,混音高通 150 Hz;慢,单独用")
+    ap.add_argument("--pitch-track", action="store_true",
+                    help="把输入文件本身当作单一目标声部,输出时间化音高轮廓(实验性);"
+                         "不要对完整混音用,那是「某条线」不是旋律")
+    ap.add_argument("--pitch-detail", action="store_true",
+                    help="配合 --pitch-track:额外输出 0.5 秒粒度的完整轮廓序列")
+    ap.add_argument("--pitch-source", default="unknown",
+                    choices=["isolated_track", "mixture", "unknown"],
+                    help="调用方声明输入是什么:独立音轨/完整混音/未声明。"
+                         "mixture 会明确标记结果不可当目标旋律")
+    ap.add_argument("--pitch-role", default="unknown",
+                    choices=["melody", "vocal", "instrument", "bass", "accompaniment", "unknown"],
+                    help="调用方声明的目标角色(元数据,Engine 不验证)")
     args = ap.parse_args()
 
     offset = float(args.start or 0.0)
@@ -3853,6 +4063,19 @@ def main():
     bpm_alt = (None if np.isnan(kick_bpm) or np.isnan(kick_ratio)
                or not (0.3 <= kick_ratio <= 3.0) else round(kick_bpm, 1))
 
+    # ---- 时间化音高轮廓(实验性;对输入本身,不依赖分轨)----
+    # 与 --pitch 的区别:--pitch 要分轨后跑两轨,--pitch-track 把输入当成单一目标轨。
+    # 所以它不依赖 demucs,但调用方必须自己保证输入是独立轨;混音上跑出来的不是旋律。
+    track_contour = None
+    if args.pitch_track:
+        if args.stems:
+            print("ERROR: --pitch-track 与 --stems 不能同用(前者对输入本身,后者先分轨)",
+                  file=sys.stderr)
+            sys.exit(2)
+        track_contour = pitch_contour(y, sr, want_series=args.pitch_detail,
+                                      source_kind=args.pitch_source,
+                                      role=args.pitch_role)
+
     # ---- 分轨(可选组件;失败不影响主分析)----
     stems = None
     if args.stems:
@@ -4043,6 +4266,8 @@ def main():
                 "note": "密度维度,与 loudness 分开;逐帧归一化后计算,与整体增益弱相关",
             },
         }
+        if track_contour:
+            result["pitch_track"] = track_contour
         if stems:
             result["stems"] = stems
         if asr:
@@ -4086,6 +4311,8 @@ def main():
                 print("[听写] 这段没听出词(可能纯器乐/人声太轻)")
         if args.pitch:
             emit_pitch(stems, y, sr)
+            if track_contour:
+                emit_pitch_track(track_contour)
         return
 
     # ---- 输出:先报适用性,再报数据 ----
@@ -4273,6 +4500,8 @@ def main():
     # ---- 音高轮廓（--detail 路径；默认路径在 return 前已经调过）----
     if args.pitch:
         emit_pitch(stems, y, sr)
+        if track_contour:
+            emit_pitch_track(track_contour)
 
     # ---- 说人话:把上面的数字组织成能读的结论 ----
     print()

@@ -4,12 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "music-evidence-engine"
-version = "0.1.2"
+version = "0.1.3"
 description = "Host-independent local audio evidence engine"
 readme = "README.md"
 requires-python = ">=3.10"
-license = "MIT"
-license-files = ["LICENSE"]
+license = {text = "MIT"}
 keywords = ["audio", "music", "analysis", "evidence"]
 classifiers = [
     "Programming Language :: Python :: 3",

@@ -15,7 +15,8 @@ class ImportTest(unittest.TestCase):
         )
         out = subprocess.check_output([sys.executable, "-B", "-c", code], text=True)
         lines = out.strip().splitlines()
-        self.assertEqual(lines[0], "0.1.1")
+        from music_evidence_engine import __version__
+        self.assertEqual(lines[0], __version__)
         self.assertEqual(lines[1], "False")
         self.assertEqual(lines[2], "False")
         self.assertEqual(lines[3], "False")

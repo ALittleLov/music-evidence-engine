@@ -70,6 +70,33 @@ result = analyze("track.flac", paths=paths, brief=True)
 
 `analyze()` is currently a **transitional in-process wrapper** around the same legacy analysis implementation used by the CLI; it captures and parses stdout. It is not a separate native API algorithm. Failures raise `AnalysisError`. Paths can be provided explicitly or via `MEE_*` environment variables.
 
+## Time-resolved pitch contour (experimental, off by default)
+
+Extracts a 0.5 s-resolution pyin F0 contour from a **single target track**. Disabled by default; requires an explicit `--pitch-track`.
+
+```bash
+music-evidence-engine track.flac --pitch-track --pitch-detail \
+    --pitch-source isolated_track --pitch-role melody --json
+```
+
+| Flag | Values | Meaning |
+|---|---|---|
+| `--pitch-track` | switch | Treat the input file itself as one target voice and emit a time-resolved contour. **Do not use on a full mix** — that is "one strong line", not a melody. Cannot be combined with `--stems`. |
+| `--pitch-detail` | switch | With `--pitch-track`: also emit the full 0.5 s contour series. |
+| `--pitch-source` | `isolated_track` \| `mixture` \| `unknown` | Caller-declared input kind. `mixture` explicitly marks the result as not usable as a target melody. |
+| `--pitch-role` | `melody` \| `vocal` \| `instrument` \| `bass` \| `accompaniment` \| `unknown` | Caller-declared role. **Metadata only**; the engine does not verify it. |
+
+Output fields added inside a `pitch_track` object: `series` (relative, per-window normalised), `absolute_series` (`[time, Hz, MIDI]` triples with `--pitch-detail`; absolute pitch on the same axis and aggregation as `series`), plus `span`/`span_note`, `trend`/`trend_note`, `turns`, `voiced_ratio`, `voiced_gaps`, `octave_suspect_*`, `mixture_risk`, `source_declared`.
+
+**Known limitations**
+
+- `span` is the robust **P90−P10** spread, **not** the pitch range; it can be smaller than the peak-to-peak amplitude listed under `turns`.
+- `trend` is a **net change**, not a claim of monotonic rise or fall.
+- Relative `series` values **cannot be compared as absolute intervals across independent windows** (each window is normalised on its own).
+- F0 on mixes, multi-voice or complex audio **may be unreliable**. Declaring `mixture` sets `mixture_risk=high` and `usable_as_target_melody=false`. **No claim of solved full melody transcription.**
+- pyin may jump octaves or lose lock; `octave_suspect_at` / `voiced_gaps` flag candidates, not guarantees.
+- The feature does **not** separate stems; the correct usage is to isolate the target voice first.
+
 ## Distribution and integration
 
 - [Engine releases and versioned assets](https://github.com/ALittleLov/music-evidence-engine/releases/latest)
