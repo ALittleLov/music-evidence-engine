@@ -55,6 +55,10 @@ def _build_argv(
     preview: Optional[Union[bool, int, float]],
     preview_asr: Optional[str],
     pitch: bool,
+    pitch_track: bool,
+    pitch_detail: bool,
+    pitch_source: Optional[str],
+    pitch_role: Optional[str],
     chord_block: Optional[float],
     argv_extra: Optional[List[str]],
 ) -> List[str]:
@@ -81,6 +85,14 @@ def _build_argv(
         argv += ["--preview-asr", str(preview_asr)]
     if pitch:
         argv.append("--pitch")
+    if pitch_track:
+        argv.append("--pitch-track")
+    if pitch_detail:
+        argv.append("--pitch-detail")
+    if pitch_source:
+        argv += ["--pitch-source", str(pitch_source)]
+    if pitch_role:
+        argv += ["--pitch-role", str(pitch_role)]
     if preview is True:
         argv.append("--preview")
     elif isinstance(preview, (int, float)) and not isinstance(preview, bool):
@@ -105,6 +117,10 @@ def analyze(
     preview: Optional[Union[bool, int, float]] = None,
     preview_asr: Optional[str] = None,
     pitch: bool = False,
+    pitch_track: bool = False,
+    pitch_detail: bool = False,
+    pitch_source: Optional[str] = None,
+    pitch_role: Optional[str] = None,
     chord_block: Optional[float] = None,
     paths: Optional[EnginePaths] = None,
     argv_extra: Optional[List[str]] = None,
@@ -122,6 +138,8 @@ def analyze(
         str(path), format=format, brief=brief, detail=detail, start=start, end=end,
         blocks=blocks, stems=stems, asr=asr, preview=preview,
         preview_asr=preview_asr, pitch=pitch, chord_block=chord_block,
+        pitch_track=pitch_track, pitch_detail=pitch_detail,
+        pitch_source=pitch_source, pitch_role=pitch_role,
         argv_extra=argv_extra,
     )
 
