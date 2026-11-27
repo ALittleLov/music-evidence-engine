@@ -28,7 +28,13 @@ cd music-evidence-engine
 python -m pip install .
 ```
 
-也可从 [最新 Engine Release](https://github.com/ALittleLov/music-evidence-engine/releases/latest) 下载 wheel，再用 pip 安装该文件。
+也可直接从 v0.1.6 Release 安装 wheel（无需 PyPI）：
+
+```bash
+python -m pip install "https://github.com/ALittleLov/music-evidence-engine/releases/download/v0.1.6/music_evidence_engine-0.1.6-py3-none-any.whl"
+```
+
+其他版本见 [最新 Engine Release](https://github.com/ALittleLov/music-evidence-engine/releases/latest)。
 
 按需安装可选依赖：
 
@@ -96,6 +102,28 @@ music-evidence-engine track.flac --pitch-track --pitch-detail \
 - 混音 / 多声部 / 复杂音频中的 F0 **可能不可靠**。声明 `mixture` 时会标 `mixture_risk=high` 且 `usable_as_target_melody=false`。**不宣称已解决完整旋律转录。**
 - pyin 可能出现八度跳变或失锁，用 `octave_suspect_at` / `voiced_gaps` 提示，但不是保证。
 - 本功能**不做分轨**；正确用法是先把目标声部拆出来再传进来。
+
+## 可选复音音符（0.1.6，默认关闭）
+
+独立于 `analyze()` 的可选本地音符事件适配器；不默认启用，不参与默认分析，默认安装不改行为。
+**不内置模型权重**，两个 ONNX 由用户自备，运行时按 SHA-256 校验。
+
+```powershell
+pip install "music-evidence-engine[polyphonic]"   # 仅为非 16 kHz 输入补 soxr
+python -m music_evidence_engine.polyphonic track.wav --models .\models --start 10 --end 30 --check
+python -m music_evidence_engine.polyphonic track.wav --models .\models --start 10 --end 30 `
+    --cache-dir .\local-cache --query 12 15
+```
+
+Python：`from music_evidence_engine.polyphonic import analyze_notes, query, summarize`。
+
+**模型获取**：从 v0.1.6 Release 资产下载 `hcqt.onnx`、`lanenet_body.onnx`（也可按 dettato 的
+Apache-2.0 权重自行导出），放进同一目录后传给 `--models`。两者**不随 wheel、默认安装不下载**；
+校验值见 `MODEL_HASHES` 与 `models.json`。不上传音频、不联网。
+
+**读法**：返回的是检测事件、起音组和候选对，**不是已核实的演奏音符数**；同音高近起音只标疑似重复，
+不删除；八度对只是候选；`slot` 不是声部或乐器身份。按区间分析会加独立 padding，边界附近可能与
+整段推理不同。
 
 ## 发行与接入
 

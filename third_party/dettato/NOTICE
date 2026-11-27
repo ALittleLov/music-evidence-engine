@@ -1,0 +1,9 @@
+Dettato
+Copyright 2026 KobiMusic
+
+This product includes software and model weights developed by KobiMusic
+(https://github.com/kobimusic/dettato, https://huggingface.co/kobimusic).
+
+The optional polyphonic evidence adapter modifies the decoder and inference wrapper
+for local CPU execution, bounded interval analysis, caching, and evidence queries.
+This source candidate does not distribute model weights.

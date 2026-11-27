@@ -28,7 +28,13 @@ cd music-evidence-engine
 python -m pip install .
 ```
 
-Or obtain the built wheel from the [latest Engine release](https://github.com/ALittleLov/music-evidence-engine/releases/latest) and install that wheel with pip.
+Or install the built wheel directly from the v0.1.6 release (no PyPI needed):
+
+```bash
+python -m pip install "https://github.com/ALittleLov/music-evidence-engine/releases/download/v0.1.6/music_evidence_engine-0.1.6-py3-none-any.whl"
+```
+
+Other releases: [latest Engine release](https://github.com/ALittleLov/music-evidence-engine/releases/latest).
 
 Optional Python dependencies, when needed:
 
@@ -96,6 +102,31 @@ Output fields added inside a `pitch_track` object: `series` (relative, per-windo
 - F0 on mixes, multi-voice or complex audio **may be unreliable**. Declaring `mixture` sets `mixture_risk=high` and `usable_as_target_melody=false`. **No claim of solved full melody transcription.**
 - pyin may jump octaves or lose lock; `octave_suspect_at` / `voiced_gaps` flag candidates, not guarantees.
 - The feature does **not** separate stems; the correct usage is to isolate the target voice first.
+
+## Optional polyphonic notes (0.1.6, off by default)
+
+An **opt-in** local note-event adapter. It is not part of `analyze()` and is never
+called implicitly; default installs and default analysis are unchanged. No model
+weights are bundled — the two ONNX graphs are user-provided and SHA-256 checked.
+
+```bash
+pip install "music-evidence-engine[polyphonic]"   # adds soxr for non-16 kHz input
+python -m music_evidence_engine.polyphonic track.wav --models ./models --start 10 --end 30 --check
+python -m music_evidence_engine.polyphonic track.wav --models ./models --start 10 --end 30 \
+    --cache-dir ./local-cache --query 12 15
+```
+
+Python: `from music_evidence_engine.polyphonic import analyze_notes, query, summarize`.
+Required files: `hcqt.onnx`, `lanenet_body.onnx` (digests in `MODEL_HASHES`).
+They are **not bundled** and **not downloaded by default**: fetch both from the v0.1.6
+Release assets (or export them yourself from dettato's Apache-2.0 weights) into one
+directory and pass it as `--models`. No network access, no audio upload; inference runs
+in a worker process on CPU.
+
+Counts are detection events, onset groups and candidate pairs — **not verified
+performed notes**. Same-pitch near-onsets are flagged, never deleted; octave pairs
+are candidates; `slot` is not voice or instrument identity. Interval inference adds
+independent padding, so edge notes may differ from full-file inference.
 
 ## Distribution and integration
 

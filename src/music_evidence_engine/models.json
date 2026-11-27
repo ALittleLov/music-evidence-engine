@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "engine_version": "0.1.5",
+  "engine_version": "0.1.6",
   "note": "模型来源清单。除 musicnn.onnx 随 wheel 内置外，其余按需下载到本地缓存；音频分析本身不改变来源。",
   "models": [
     {
@@ -91,6 +91,30 @@
       "license": "MIT",
       "source": "https://huggingface.co/Systran/faster-whisper-{tiny,base,small}",
       "note": "听写组件按需从上游下载，缓存到 <data>/whisper。"
+    },
+    {
+      "name": "hcqt.onnx",
+      "kind": "on-demand",
+      "required": false,
+      "bundled": false,
+      "size": 2087946,
+      "sha256": "de5cab8ae9f7b0f7a27be2eca8ca0da76f067d9b719c8af1b67d3d3d04048de5",
+      "license": "Apache-2.0",
+      "source": "KobiMusic/dettato（权重 Apache-2.0，本项目导出为 ONNX）",
+      "download": "https://github.com/ALittleLov/music-evidence-engine/releases/download/v0.1.6/hcqt.onnx",
+      "note": "仅 music_evidence_engine.polyphonic 使用；不随 wheel、默认安装不下载；运行时按 SHA-256 校验。"
+    },
+    {
+      "name": "lanenet_body.onnx",
+      "kind": "on-demand",
+      "required": false,
+      "bundled": false,
+      "size": 62340663,
+      "sha256": "11da0b203b78e3061ee4ba4a1b86304747f376a1e2fc217f7060d206eec4c626",
+      "license": "Apache-2.0",
+      "source": "KobiMusic/dettato（权重 Apache-2.0，本项目导出为 ONNX）",
+      "download": "https://github.com/ALittleLov/music-evidence-engine/releases/download/v0.1.6/lanenet_body.onnx",
+      "note": "仅 music_evidence_engine.polyphonic 使用；不随 wheel、默认安装不下载；运行时按 SHA-256 校验。"
     }
   ],
   "engine_api": 1,
@@ -107,6 +131,9 @@
       ],
       "asr": [
         "faster_whisper"
+      ],
+      "polyphonic": [
+        "soxr"
       ]
     }
   }

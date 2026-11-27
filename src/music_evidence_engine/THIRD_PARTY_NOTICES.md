@@ -41,6 +41,15 @@ Windows 版 scipy 的 wheel 里带有下列库：
   分发包中包含一份，或由安装流程在首次使用时下载
 - 用途：只做声源/乐器方向的弱先验，不参与任何测量结论
 
+### dettato（可选复音音符，0.1.6 起）
+
+- 上游：**KobiMusic/dettato**，**Apache License 2.0**
+- 许可全文与 NOTICE：`third_party/dettato/LICENSE`、`third_party/dettato/NOTICE`
+- 本项目只适配其解码与 overlap-add 推理逻辑（`polyphonic.py`），**不打包模型权重**
+- 可选的 `hcqt.onnx`、`lanenet_body.onnx` 由用户自备，运行时按 SHA-256 校验；
+  权重分发与许可门禁不在本包内解决
+- 该模块默认不安装、不启用；不调用时不参与任何分析
+
 ---
 
 ## 只用于文档与视频（不随插件分发）
